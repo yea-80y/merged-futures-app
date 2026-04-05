@@ -1,0 +1,16 @@
+{
+  "name": "merged-futures-app",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "upload:swarm": "node scripts/upload-to-swarm-feed.cjs",
+    "deploy": "npm run build && npm run upload:swarm"
+  },
+  "dependencies": {
+    "@ethersphere/bee-js": "^11.1.0",
+    "axios": "^1.9.0",
+    "dotenv": "^17.3.1",
+    "tar": "^7.4.3"
+  }
+}

@@ -1,0 +1,38 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+logs
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Swarm deploy state
+.swarm/
+
+# Vite cache
+.vite/
+
+# Per user preferences — exclude scripts and misc docs
+*.sh
+*.tar
+CLAUDE.md
+scripts/
+
+# Claude Code local settings
+.claude/
