@@ -32,21 +32,39 @@ function createProfileStore() {
 export const profile = createProfileStore()
 
 // ---- Reservations ----
-// Stores talk IDs the current user has reserved.
-// When authenticated, toggles are persisted to the backend/Swarm.
-// Falls back to localStorage-only when not authenticated (guest mode).
+// Stores talk IDs the current user has reserved, scoped per wallet address.
+// Key format: mf8-reservations-{address} (or mf8-reservations for guest/legacy).
 
 function createReservationsStore() {
-  const stored = localStorage.getItem('mf8-reservations')
-  const initial: string[] = stored ? JSON.parse(stored) : []
-  const { subscribe, set, update } = writable<string[]>(initial)
+  const { subscribe, set, update } = writable<string[]>([])
+  let currentKey = 'mf8-reservations'
 
   function persist(ids: string[]) {
-    localStorage.setItem('mf8-reservations', JSON.stringify(ids))
+    localStorage.setItem(currentKey, JSON.stringify(ids))
   }
+
+  function loadKey(key: string) {
+    currentKey = key
+    const stored = localStorage.getItem(key)
+    set(stored ? JSON.parse(stored) : [])
+  }
+
+  // Load guest/legacy data on init
+  loadKey('mf8-reservations')
 
   return {
     subscribe,
+
+    /** Switch to a different account's reservations (call on login/logout). */
+    switchAccount(address: string | null) {
+      const key = address
+        ? `mf8-reservations-${address.toLowerCase()}`
+        : 'mf8-reservations'
+      loadKey(key)
+    },
+
+    /** Returns the localStorage key for the current account. */
+    get storageKey() { return currentKey },
 
     /** Flip local state immediately (optimistic). Does NOT call the API. */
     localToggle(talkId: string) {

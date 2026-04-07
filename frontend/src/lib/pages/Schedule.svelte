@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import TalkCard from '../components/TalkCard.svelte'
   import { talks } from '../data/agenda'
   import { reservations, router } from '../data/stores'
@@ -14,28 +13,40 @@
 
   let myPods = $state<PodDocument[]>([])
   let podsLoading = $state(false)
+  let podsLoadedFor = $state<string | null>(null)
 
   const parentAddress = $derived($auth.parentAddress)
 
-  onMount(async () => {
-    if (parentAddress) {
-      podsLoading = true
-      myPods = await getUserPods(parentAddress, (fresh) => { myPods = fresh })
+  // Load pods reactively when parentAddress becomes available (not onMount)
+  $effect(() => {
+    const addr = parentAddress
+    if (!addr) {
+      myPods = []
+      podsLoadedFor = null
+      return
+    }
+    // Only fetch if we haven't loaded for this address yet
+    if (podsLoadedFor === addr) return
+    podsLoadedFor = addr
+    podsLoading = true
+    getUserPods(addr, (fresh) => { myPods = fresh }).then(pods => {
+      myPods = pods
       podsLoading = false
 
-      // Restore reservations from PODs only when localStorage was cleared
-      // (e.g. new device or cache wipe). If the key exists at all (even "[]"),
-      // the user has been actively managing reservations — trust local state.
-      const hasLocalData = localStorage.getItem('mf8-reservations') !== null
-      if (!hasLocalData && myPods.length > 0) {
-        const podTalkIds = myPods
+      // Restore reservations from PODs only when localStorage has no data for
+      // this account (e.g. new device or cache wipe).
+      const hasLocalData = localStorage.getItem(reservations.storageKey) !== null
+      if (!hasLocalData && pods.length > 0) {
+        const podTalkIds = pods
           .map(p => talks.find(t => t.title === p.talkTitle)?.id)
           .filter((id): id is string => !!id)
         if (podTalkIds.length > 0) {
           reservations.syncFromRemote(podTalkIds)
         }
       }
-    }
+    }).catch(() => {
+      podsLoading = false
+    })
   })
 
   // Check for time conflicts

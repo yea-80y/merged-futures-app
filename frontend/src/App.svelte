@@ -11,7 +11,7 @@
   import Login from './lib/pages/Login.svelte'
   import OrgDashboard from './lib/pages/OrgDashboard.svelte'
   import SignConfirmDialog from './lib/components/SignConfirmDialog.svelte'
-  import { router, profile } from './lib/data/stores'
+  import { router, profile, reservations } from './lib/data/stores'
   import { auth, tryRestore, setConfirmSigning } from './lib/auth/auth-store'
   import { fetchProfile } from './lib/api/profile'
   import type { SigningRequestInfo } from './lib/shared/types'
@@ -31,22 +31,30 @@
     tryRestore()
   })
 
-  // Pre-fetch profile as soon as auth is confirmed so all pages have it immediately
+  // React to account changes — switch reservations store and fetch profile
   $effect(() => {
     const address = $auth.parentAddress
-    if ($auth.status === 'authenticated' && address && !$profile) {
-      fetchProfile(address).then(remote => {
-        // Always populate the store when authenticated — even if no Swarm profile
-        // exists yet. This ensures Forum/TalkDetail work without visiting Profile first.
-        profile.save({
-          name: remote?.displayName || '',
-          bio: remote?.bio || '',
-          interests: [],
-          avatar: '🧑‍💻',
-          avatarRef: remote?.avatarRef || undefined,
-          createdAt: new Date().toISOString(),
+    const status = $auth.status
+
+    // Switch reservations to this account (or clear on logout)
+    reservations.switchAccount(address)
+
+    if (status === 'authenticated' && address) {
+      // Clear stale profile from previous account, then fetch fresh
+      if (!$profile || $profile.name === '') {
+        fetchProfile(address).then(remote => {
+          profile.save({
+            name: remote?.displayName || '',
+            bio: remote?.bio || '',
+            interests: [],
+            avatar: '🧑‍💻',
+            avatarRef: remote?.avatarRef || undefined,
+            createdAt: new Date().toISOString(),
+          })
         })
-      })
+      }
+    } else if (status === 'unauthenticated') {
+      profile.clear()
     }
   })
 
